@@ -53,6 +53,7 @@ protected:  // control bar embedded members
 	CColorStatic	m_wndBackColor;
 	CComboBox		m_wndWidthBox;
 	CComboBox		m_wndStyleBox;
+	CFont				m_dlgFont;
 
 // Generated message map functions
 protected:

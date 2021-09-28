@@ -3,6 +3,7 @@
 
 #include "stdafx.h"
 #include "Paint.h"
+#include <windowsx.h>
 
 #include "MainFrm.h"
 
@@ -89,6 +90,9 @@ int CMainFrame::OnCreate(LPCREATESTRUCT lpCreateStruct)
 	m_wndToolBar.SetButtonInfo(13, ID_SEPARATOR, TBBS_SEPARATOR, 10);
 	m_wndToolBar.SetButtonInfo(14, ID_SEPARATOR, TBBS_SEPARATOR, 50);
 	m_wndToolBar.SetButtonInfo(15, ID_SEPARATOR, TBBS_SEPARATOR, 10);
+
+	m_dlgFont.CreatePointFont(10 * 8, _T("MS Shell Dlg"));
+
 	CRect rect;
 	m_wndToolBar.GetItemRect(8, &rect);
 	m_wndFrontColor.Create(_T("Front"),
@@ -107,6 +111,7 @@ int CMainFrame::OnCreate(LPCREATESTRUCT lpCreateStruct)
 	rect.bottom += 100;
 	m_wndWidthBox.Create(WS_CHILD|WS_VISIBLE|CBS_DROPDOWNLIST|WS_VSCROLL,
 							rect,&m_wndToolBar,IDC_COMBOWIDTH); 
+	m_wndWidthBox.SetFont(&m_dlgFont);
 	m_wndWidthBox.AddString(_T("1"));
 	m_wndWidthBox.AddString(_T("2"));
 	m_wndWidthBox.AddString(_T("3"));
@@ -121,6 +126,7 @@ int CMainFrame::OnCreate(LPCREATESTRUCT lpCreateStruct)
 	rect.bottom += 100;
 	m_wndStyleBox.Create(WS_CHILD|WS_VISIBLE|CBS_DROPDOWNLIST,
 							rect,&m_wndToolBar,IDC_COMBOWIDTH);
+	m_wndStyleBox.SetFont(&m_dlgFont);
 	m_wndStyleBox.AddString(_T("_______"));
 	m_wndStyleBox.AddString(_T("_ _ _ _"));
 	m_wndStyleBox.AddString(_T("..........."));

@@ -48,7 +48,7 @@ END_MESSAGE_MAP()
 CPaintView::CPaintView()
 {
 	// TODO: add construction code here
-	m_pMemDC = new CDC();
+	m_pMemDC = std::make_unique<CDC>();
 	m_CurrentPO	= PO_NONE;
 	m_CurrentMS	= MS_NONE;
 	m_nObject	= -1;
@@ -75,8 +75,6 @@ void CPaintView::OnDraw(CDC* pDC)
 	{
 		pDoc->m_listObject.GetNext(Pos)->Draw(pDC);
 	}
-/*	if(m_nObject != -1)
-		DrawDragObject(m_nObject, CSize(0,0), R2_NOTXORPEN);*/
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -207,7 +205,7 @@ void CPaintView::OnMouseMove(UINT nFlags, CPoint point)
 	CPoint ptTemp = point;
 	ptTemp.x += GetScrollPos(SB_HORZ);
 	ptTemp.y += GetScrollPos(SB_VERT);
-	CPaintObject* po;
+	CPaintDoc::CPaintObjectPtr po;
 	if(m_nObject != -1)
 		po = GetDocument()->m_listObject.GetAt(GetDocument()->m_listObject.FindIndex(m_nObject));
 	if(m_CurrentMS == MS_PAINT)
@@ -237,7 +235,7 @@ void CPaintView::OnMouseMove(UINT nFlags, CPoint point)
 				DrawObject(point, R2_NOTXORPEN, R2_NOTXORPEN);
 				break;
 		}	
-	if(m_CurrentMS == MS_DRAG)
+	if(m_CurrentMS == MS_DRAG && po != nullptr)
 	{
 		DrawTransObject(m_nObject, R2_NOTXORPEN);
 		po->Drag(ptTemp - m_ptPrev);
@@ -287,8 +285,6 @@ void CPaintView::OnLButtonDblClk(UINT nFlags, CPoint point)
 		m_listTemp.AddTail(ptTemp);
 		ClipCursor(NULL);
 		m_CurrentPO = PO_COLORPOLYGON2;
-//		m_ptStart.x = m_ptPrev.x = m_listTemp.GetHead().x-GetScrollPos(SB_HORZ);
-//		m_ptStart.y = m_ptPrev.y = m_listTemp.GetHead().y-GetScrollPos(SB_VERT);
 		DrawObject(point, R2_NOTXORPEN, R2_COPYPEN); 
 		m_CurrentPO = PO_COLORPOLYGON;
 		AddObject(PO_COLORPOLYGON, point, point);
@@ -306,7 +302,7 @@ void CPaintView::AddObject(OBJECT object,
 	ptEnd.y	+= GetScrollPos(SB_VERT);
 	ptStart.x += GetScrollPos(SB_HORZ);
 	ptStart.y += GetScrollPos(SB_VERT);
-	CPaintObject* po = new CPaintObject;
+	auto po = std::make_shared<CPaintObject>();
 	po->m_clFront = static_cast<CMainFrame*>(AfxGetMainWnd())->GetFrontColor();
 	po->m_clBack  = static_cast<CMainFrame*>(AfxGetMainWnd())->GetBackColor();
 	po->m_ID	  = object;
@@ -326,8 +322,6 @@ void CPaintView::AddObject(OBJECT object,
 			po->m_listPoint.AddTail(ptEnd);
 			break;
 		case PO_POLYLINE:
-/*		case PO_POLYGON:
-		case PO_COLORPOLYGON:*/
 			m_listTemp.RemoveHead();
 			m_listTemp.RemoveTail();
 			po->m_listPoint.AddTail(&m_listTemp);
@@ -351,10 +345,10 @@ void CPaintView::AddObject(OBJECT object,
 void CPaintView::DrawObject(CPoint point, int nROP1, int nROP2)
 {
 	CDC* pDC = GetDC();
-	COLORREF clPen;
-	COLORREF clBrush;
-	DWORD	dwWidth;
-	int		nPenStyle;
+	COLORREF clPen = RGB(0, 0, 0);
+	COLORREF clBrush = RGB(0, 0, 0);
+	DWORD	dwWidth = 0;
+	int		nPenStyle = PS_SOLID;
 	if( m_CurrentMS == MS_PAINT )
 	{
 		clPen = static_cast<CMainFrame*>(AfxGetMainWnd())->GetFrontColor();
@@ -367,8 +361,7 @@ void CPaintView::DrawObject(CPoint point, int nROP1, int nROP2)
 	pen.CreatePen(nPenStyle, dwWidth, clPen);
 	Brush.CreateSolidBrush(clBrush);
 	CPen* pPrevPen = pDC->SelectObject(&pen);
-	CPoint points[5];
-	if(m_CurrentMS == MS_PAINT || MS_DRAG)
+	if(m_CurrentMS == MS_PAINT || m_CurrentMS == MS_DRAG)
 	{
 		switch(m_CurrentPO) 
 		{
@@ -438,20 +431,21 @@ void CPaintView::DrawObject(CPoint point, int nROP1, int nROP2)
 			m_ptPrev = point;
 			break;
 		case PO_COLORPOLYGON2 :
-			CPoint* points = new CPoint[m_listTemp.GetCount()];
+		{
+			std::vector<CPoint> points(m_listTemp.GetCount());
 			pPrevBrush = pDC->SelectObject(&Brush);
 			POSITION pos = m_listTemp.GetHeadPosition();
-			for(int i=0;i<m_listTemp.GetCount();i++)
+			for (int i = 0; i < m_listTemp.GetCount(); i++)
 			{
 				points[i] = m_listTemp.GetNext(pos);
 				points[i].x -= GetScrollPos(SB_HORZ);
 				points[i].y -= GetScrollPos(SB_VERT);
 			}
-			pDC->Polygon(points, m_listTemp.GetCount());
+			pDC->Polygon(&points[0], m_listTemp.GetCount());
 			pDC->SelectObject(pPrevBrush);
 			m_ptPrev = point;
-			delete points;
 			break;
+		}
 		}
 	}
 	pDC->SelectObject(pPrevPen);
@@ -539,12 +533,11 @@ void CPaintView::OnRButtonDown(UINT nFlags, CPoint point)
 	pt.y += GetScrollPos(SB_VERT);
 	m_ptPrev = m_ptStart = point;
 	CPaintDoc* pDoc = (CPaintDoc*)GetDocument();
-	CPaintObject* po;
 	POSITION pos;
 	if(m_nObject != -1)
 	{
 		pos = GetDocument()->m_listObject.FindIndex(m_nObject);
-		po = GetDocument()->m_listObject.GetAt(pos);
+		CPaintDoc::CPaintObjectPtr po = GetDocument()->m_listObject.GetAt(pos);
 		po->m_bChange = FALSE;
 		m_nObject = -1;
 	}
@@ -584,10 +577,9 @@ void CPaintView::OnRButtonDown(UINT nFlags, CPoint point)
 			if(m_nObject != -1)
 			{
 				DrawTransObject(m_nObject, R2_NOTXORPEN );
-				CPaintObject* po = pDoc->m_listObject.GetAt(pDoc->m_listObject.FindIndex(m_nObject));
+				CPaintDoc::CPaintObjectPtr po = pDoc->m_listObject.GetAt(pDoc->m_listObject.FindIndex(m_nObject));
 				po->m_bChange = TRUE;
 			}
-//			Invalidate();
 	}		
 	CScrollView::OnRButtonDown(nFlags, point);
 }
@@ -595,7 +587,7 @@ void CPaintView::OnRButtonDown(UINT nFlags, CPoint point)
 void CPaintView::OnRButtonUp(UINT nFlags, CPoint point) 
 {
 	// TODO: Add your message handler code here and/or call default
-	CPaintObject* po;
+	CPaintDoc::CPaintObjectPtr po;
 	POSITION pos;
 	if(m_nObject != -1)
 	{
@@ -639,7 +631,7 @@ void CPaintView::DrawTransObject(int nIndex, int nRop)
 	CDC* pDC = GetDC();
 	CPaintDoc* pDoc = GetDocument();
 	POSITION Pos = pDoc->m_listObject.FindIndex(nIndex);
-	CPaintObject* po = pDoc->m_listObject.GetAt(Pos);
+	CPaintDoc::CPaintObjectPtr po = pDoc->m_listObject.GetAt(Pos);
 	po->Drag(CSize( -GetScrollPos(SB_HORZ), -GetScrollPos(SB_VERT)));
 	po->Draw( pDC, nRop);
 	po->Drag(CSize( GetScrollPos(SB_HORZ), GetScrollPos(SB_VERT)));
@@ -651,14 +643,17 @@ void CPaintView::DrawTransObject(int nIndex, int nRop)
 
 void CPaintView::OnTimer(UINT nIDEvent) 
 {
+	if (AfxGetMainWnd() == nullptr)
+	{
+		return;
+	}
 	// TODO: Add your message handler code here and/or call default
-//	static COLORREF clFront = RGB(0,0,0);
 	static COLORREF clPen	= RGB(0,0,0);
 	static COLORREF clBrush = RGB(255,255,255);
 	static DWORD	dwWidth = 1;
 	static	int	nPenStyle	= PS_SOLID;
 	POSITION pos;
-	CPaintObject* po;
+	CPaintDoc::CPaintObjectPtr po;
 	if( static_cast<CMainFrame*>(AfxGetMainWnd())->GetWidth() != 1 )
 		static_cast<CMainFrame*>(AfxGetMainWnd())->EnableStyle(FALSE);
 	else

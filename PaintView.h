@@ -34,7 +34,7 @@ public:
 	OBJECT					m_CurrentPO;
 	CList<CPoint,CPoint>	m_listTemp;
 	MOUSESTATE				m_CurrentMS;
-	CDC*					m_pMemDC;
+	std::unique_ptr<CDC>	m_pMemDC;
 	int						m_nObject;
 	CPaintObject			m_TempObj;
 

@@ -40,7 +40,8 @@ public:
 #endif
 
 public:
-	CList<CPaintObject*,CPaintObject*> m_listObject;
+	using CPaintObjectPtr = std::shared_ptr<CPaintObject>;
+	CList<CPaintObjectPtr, CPaintObjectPtr> m_listObject;
 
 protected:
 

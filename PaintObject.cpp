@@ -40,8 +40,7 @@ void CPaintObject::Draw(CDC* pDC, int nROP)
 	CPen	Pen, *pPrevPen;
 	CBrush	Brush, *pPrevBrush;
 	CPoint point;
-	CPoint* points;
-	int i;
+	std::vector<CPoint> points;
 	int nPrevROP = pDC->SetROP2( nROP );
 	if(m_bChange)
 		Pen.CreatePen(PS_DASH, 1, m_clFront);
@@ -63,7 +62,7 @@ void CPaintObject::Draw(CDC* pDC, int nROP)
 			break;
 		case PO_LINE :
 			pDC->MoveTo(m_listPoint.GetAt(Pos));
-			for (i=0;i < m_listPoint.GetCount();i++)
+			for (int i=0;i < m_listPoint.GetCount();i++)
 				pDC->LineTo(m_listPoint.GetNext(Pos));
 			break;
 		case PO_RECT :
@@ -106,12 +105,12 @@ void CPaintObject::Draw(CDC* pDC, int nROP)
 			break;
 		case PO_POLYLINE :
 			pDC->MoveTo(m_listPoint.GetAt(Pos));
-			for (i=0;i < m_listPoint.GetCount();i++)
+			for (int i=0;i < m_listPoint.GetCount();i++)
 				pDC->LineTo(m_listPoint.GetNext(Pos));
 			break;
 		case PO_POLYGON :
 			pDC->MoveTo(m_listPoint.GetAt(Pos));
-			for (i=0;i < m_listPoint.GetCount();i++)
+			for (int i=0;i < m_listPoint.GetCount();i++)
 				pDC->LineTo(m_listPoint.GetNext(Pos));
 			pDC->LineTo(m_listPoint.GetHead());
 			break;
@@ -155,16 +154,15 @@ void CPaintObject::Draw(CDC* pDC, int nROP)
 			break;
 		case PO_COLORPOLYGON :
 			pPrevBrush = pDC->SelectObject(&Brush);
-			points = new CPoint[m_listPoint.GetCount()];
+			points.resize(m_listPoint.GetCount());
 			POSITION pos = m_listPoint.GetHeadPosition();
 			points[0] = m_listPoint.GetAt(pos);
 			for(int i=0;i<m_listPoint.GetCount();i++)
 			{
 				points[i] = m_listPoint.GetNext(pos);
 			}
-			pDC->Polygon(points, m_listPoint.GetCount());
+			pDC->Polygon(&points[0], m_listPoint.GetCount());
 			pDC->SelectObject(pPrevBrush);
-			delete points;
 			break;
 			
 	}
@@ -187,7 +185,6 @@ void CPaintObject::Serialize(CArchive &ar)
 		ar<<nCount;
 		POSITION pos = m_listPoint.GetHeadPosition();
 		point = m_listPoint.GetAt(pos);
-//		ar<<point.x<<point.y;
 		for(int i=0;i<nCount;i++)
 		{
 			point = m_listPoint.GetNext(pos);
@@ -212,7 +209,7 @@ void CPaintObject::Serialize(CArchive &ar)
 BOOL CPaintObject::PtInObject(CPoint point)
 {
 	CRgn rgn;
-	CPoint pt, *ppt;
+	CPoint pt;
 	int i;
 	switch(m_ID)
 	{
@@ -224,57 +221,51 @@ BOOL CPaintObject::PtInObject(CPoint point)
 									pt.y + m_dwWidth+3);
 			return rgn.PtInRegion(point);
 		case PO_LINE :
-			ppt = new CPoint[4];
+		{
+			CPoint ppt[4] = {};
 			ppt[0] = ppt[1] = m_listPoint.GetHead();
 			ppt[2] = ppt[3] = m_listPoint.GetTail();
-/*			ppt[0].x > ppt[2].x ?	ppt[0].x += 7, ppt[1].x -= 7,
-									ppt[2].x -= 7, ppt[3].x += 7 :
-									ppt[0].x -= 7, ppt[1].x += 7,
-									ppt[2].x += 7, ppt[3].x -= 7 ;
-			ppt[0].y > ppt[2].y ?	ppt[0].y += 7, ppt[1].y -= 7,
-									ppt[2].y -= 7, ppt[3].y += 7 :
-									ppt[0].y -= 7, ppt[1].y += 7,
-									ppt[2].y += 7, ppt[3].y -= 7 ;*/
-			ppt[0] += CSize(10,10);
-			ppt[1] -= CSize(0,10);
-			ppt[2] -= CSize(10,0);
-			ppt[3] += CSize(10,10);
+			ppt[0] += CSize(10, 10);
+			ppt[1] -= CSize(0, 10);
+			ppt[2] -= CSize(10, 0);
+			ppt[3] += CSize(10, 10);
 			rgn.CreatePolygonRgn(ppt, 4, ALTERNATE);
-			delete ppt;
 			return rgn.PtInRegion(point);
+		}
 		case PO_RECT :
 		case PO_COLORRECT:
-			ppt = new CPoint[2];
+		{
+			CPoint ppt[2] = {};
 			ppt[0] = m_listPoint.GetHead();
 			ppt[1] = m_listPoint.GetTail();
-			rgn.CreateRectRgn(	ppt[0].x, ppt[0].y,
-								ppt[1].x, ppt[1].y);
-			delete ppt;
+			rgn.CreateRectRgn(ppt[0].x, ppt[0].y,
+				ppt[1].x, ppt[1].y);
 			return rgn.PtInRegion(point);
+		}
 		case PO_ELLIPSE :
 		case PO_COLORELLIPSE :
-			ppt = new CPoint[2];
+		{
+			CPoint ppt[2] = {};
 			ppt[0] = m_listPoint.GetHead();
 			ppt[1] = m_listPoint.GetTail();
-			rgn.CreateEllipticRgn(	ppt[0].x, ppt[0].y,
-									ppt[1].x, ppt[1].y);
-			delete ppt;
+			rgn.CreateEllipticRgn(ppt[0].x, ppt[0].y,
+				ppt[1].x, ppt[1].y);
 			return rgn.PtInRegion(point);
 			break;
+		}
 		
-		
-		//	return FALSE;//rgn.PtInRegion(point);
 		case PO_POLYLINE :
 		case PO_POLYGON :
 		case PO_COLORPOLYGON :
-			ppt = new CPoint[m_listPoint.GetCount()];
+		{
+			std::vector<CPoint> ppt(m_listPoint.GetCount());
 			POSITION pos = m_listPoint.GetHeadPosition();
-			for (i=0;i < m_listPoint.GetCount();i++)
+			for (i = 0; i < m_listPoint.GetCount(); i++)
 				ppt[i] = m_listPoint.GetNext(pos);
-			
-			rgn.CreatePolygonRgn(ppt, m_listPoint.GetCount(), ALTERNATE);
-			delete ppt;
+
+			rgn.CreatePolygonRgn(&ppt[0], m_listPoint.GetCount(), ALTERNATE);
 			return rgn.PtInRegion(point);
+		}
 	}
 	return FALSE;
 }

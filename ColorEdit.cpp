@@ -17,6 +17,7 @@ static char THIS_FILE[] = __FILE__;
 CColorStatic::CColorStatic():m_clBack(RGB(0 ,0 ,0))
 {
 	ZeroMemory(m_szName, sizeof(m_szName));
+   m_dlgFont.CreatePointFont(110, _T("MS Shell Dlg"));
 }
 
 CColorStatic::~CColorStatic()
@@ -43,6 +44,7 @@ void CColorStatic::OnPaint()
 	RECT rcClient = {0,0,100,100};
 	GetClientRect(&rcClient);
 	brush.CreateSolidBrush(m_clBack);
+	dc.SelectObject(&m_dlgFont);
 	dc.FillRect(&rcClient, &brush);
 	dc.SetBkMode(TRANSPARENT);
 	dc.SetTextColor(0x00FFFFFF^m_clBack);
@@ -50,7 +52,7 @@ void CColorStatic::OnPaint()
 	// Do not call CEdit::OnPaint() for painting messages
 }
 
-BOOL CColorStatic::PreCreateWindow(CREATESTRUCT& cs) 
+BOOL CColorStatic::PreCreateWindow(CREATESTRUCT& cs)
 {
 	// TODO: Add your specialized code here and/or call the base class
 	cs.style |= SS_NOTIFY;

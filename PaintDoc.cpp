@@ -56,7 +56,6 @@ BOOL CPaintDoc::OnNewDocument()
 void CPaintDoc::Serialize(CArchive& ar)
 {
 	int nCounter;
-	CPaintObject* po;
 	if (ar.IsStoring())
 	{
 		// TODO: add storing code here
@@ -73,9 +72,9 @@ void CPaintDoc::Serialize(CArchive& ar)
 		ar>>nCounter;
 		for(int i=0;i<nCounter;i++)
 		{
-			po = new CPaintObject;
+			auto po = std::make_unique<CPaintObject>();
 			po->Serialize(ar);
-			m_listObject.AddTail(po);
+			m_listObject.AddTail(std::move(po));
 		}
 	}
 }
